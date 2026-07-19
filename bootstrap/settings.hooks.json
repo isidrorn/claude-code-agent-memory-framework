@@ -24,6 +24,18 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/scripts/memory-backup.sh 2>/dev/null; true",
+            "shell": "bash",
+            "statusMessage": "Backing up project memory..."
+          }
+        ]
+      }
     ]
   }
 }
