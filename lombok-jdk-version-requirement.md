@@ -4,7 +4,6 @@ description: "Lombok's annotation processor silently no-ops under JDK 26 / Graal
 metadata:
   node_type: memory
   type: project
-  originSessionId: session_01JRSLoHhTpKdsnaPtcSRMaV
   modified: 2026-07-19
 ---
 

@@ -4,7 +4,6 @@ description: "Cross-repo sequencing rule: doodle-code-challenge take-home ships 
 metadata:
   node_type: memory
   type: project
-  originSessionId: session_01JRSLoHhTpKdsnaPtcSRMaV
   modified: 2026-07-19
 ---
 

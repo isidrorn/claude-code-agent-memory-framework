@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=~/.claude/memory/MEMORY.md; cap=50; if [ -f \"$f\" ]; then total=$(wc -l < \"$f\"); if [ \"$total\" -gt \"$cap\" ]; then head -n \"$cap\" \"$f\"; echo; echo \"... (truncated: $((total-cap)) more lines in ~/.claude/memory/MEMORY.md -- run a compaction pass, see ~/.claude/CLAUDE.md)\"; else cat \"$f\"; fi; fi; true",
+            "shell": "bash",
+            "statusMessage": "Loading global memory index..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); case \"$input\" in *memory*.md*) printf \"%s\" \"$input\" | node ~/.claude/scripts/memory-lint.js 2>/dev/null ;; esac; true",
+            "shell": "bash",
+            "statusMessage": "Linting memory file..."
+          }
+        ]
+      }
+    ]
+  }
+}
