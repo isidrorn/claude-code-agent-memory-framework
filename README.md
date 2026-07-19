@@ -34,6 +34,8 @@ MEMORY.md                                    index — one line per memory file,
 <topic>.md                                   individual memory files (see schema below)
 docs/
   memory-framework-ideas.md                  design backlog: what's built, what's next, why
+  hooks-reference.md                         technical reference: every hook's firing conditions,
+                                              scope, and actions
 bootstrap/                                   the mechanism itself, portable to a new machine
   CLAUDE.md                                  copy of ~/.claude/CLAUDE.md
   memory-lint.js                             copy of ~/.claude/scripts/memory-lint.js
