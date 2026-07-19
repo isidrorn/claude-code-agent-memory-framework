@@ -19,8 +19,10 @@ Ideas #1, #2, and #3 are now implemented:
   in this folder's own `MEMORY.md` on first run) and against synthetic broken folders (missing
   `metadata.type`, dangling `[[wikilink]]`, an unindexed file) — all three detected correctly.
 - **#2 (git):** this folder is now a git repo, remote `origin` at
-  `github.com/isidrorn/claude-code-agent-memory-framework` (private). Scope is the global folder
-  only — per-project memory folders stay local-only for now.
+  `github.com/isidrorn/claude-code-agent-memory-framework` (**public**, by explicit choice — see
+  the note this implies for anything written here going forward: nothing sensitive, no absolute
+  paths with identifying detail, no client/employer specifics). Scope is the global folder only —
+  per-project memory folders stay local-only for now.
 - **#3 (SessionStart cap):** the hook command now caps injection at 50 lines with a truncation
   warning instead of an unconditional `cat`.
 
