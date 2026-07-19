@@ -1,4 +1,7 @@
-# Claude Code agent memory framework — global tier
+# claude-code-agent-memory-framework
+
+Fancy name for a series of skills and hooks to improve CC memory and knowledge management, adding
+global-storing and surgical context retrieval among agents.
 
 This repo is the **global** tier of a two-tier memory system for Claude Code (the Anthropic CLI
 coding agent), built up across working sessions in `doodle-code-challenge` and meant to apply to
