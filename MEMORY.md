@@ -5,3 +5,4 @@
 - [Stop vs SessionEnd](claude-code-stop-vs-sessionend.md) — Stop fires per turn; use SessionEnd for once-per-session hooks
 - [Hooks bypass permission classifier](claude-code-hooks-bypass-permission-classifier.md) — hook commands run trusted, unlike interactive tool calls
 - [Framework dev status](framework-dev-status.md) — where framework-building stands; next step is idea #7
+- [Stop hook payload](claude-code-stop-hook-payload.md) — Stop stdin has transcript_path + last_assistant_message, confirmed live

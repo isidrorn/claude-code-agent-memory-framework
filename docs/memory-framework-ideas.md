@@ -169,15 +169,32 @@ see it. Turns compaction from "I notice it mid-task" into "it's already flagged 
 Partly superseded by the linter now running on every edit — this would add periodic (not just
 edit-triggered) checking.
 
-### Tier C — real but weaker guarantees; next up for refinement (idea #7)
+### Tier C — real but weaker guarantees; specified, not yet built (idea #7)
 
-**7. Session-end draft via an `agent`-type Stop hook.**
-Claude Code hooks support `type: agent` — a Stop hook could run a small model (e.g. Haiku) over
-the session transcript and draft candidate memory entries as a `systemMessage`, closest to what
-claude-mem's Stop hook does automatically. Real value (catches things I forget to save in the
-moment), but it's still an LLM judgment call underneath — just a different, cheaper model's — and
-it adds latency/cost to every session close. Flagged by the user as a technique colleagues use in
-practice — refining this is the next conversation.
+**7. Session-end draft via an `agent`-type Stop hook.** **Status (2026-07-19): both open questions
+resolved, design specified, implementation not started.**
+
+- Blocker 1 (does `Stop` hook stdin actually expose the session transcript?) — confirmed
+  empirically, not from docs: a temporary `Stop` hook dumped its real payload. Full key set and
+  the `.jsonl` format it points to are recorded in this repo's `claude-code-stop-hook-payload.md`
+  memory file. Bonus finding: `last_assistant_message` is handed to the hook directly as a string
+  — a full transcript read via `transcript_path` is only needed for genuine full-session context,
+  not a single-turn digest.
+- Blocker 2 (is this a real pattern or a speculative one?) — confirmed against
+  `docs.claude-mem.ai` directly: it runs a materially heavier version of exactly this (every tool
+  call, not just session end, through an SDK-driven compression daemon). See the Tier E note below
+  for the full comparison and why we're not copying its daemon/SQLite architecture wholesale.
+
+**Design:** an `agent`-type `Stop` hook, gated so it doesn't fire on every single turn (e.g. only
+after N turns, or some cheap heuristic on turn content), reads `last_assistant_message` for
+lightweight per-turn signal and/or parses `transcript_path`'s `.jsonl` for full-session context,
+and drafts candidate memory entries as a `systemMessage` — surfaced for accept/discard, not
+auto-written. The auto-write choice is deliberate: claude-mem's bet is fully-automatic capture;
+this framework's bet is deliberate human-curated saves (see Memory Practices in `CLAUDE.md`), and
+an agent-drafted-but-human-confirmed entry keeps that property instead of trading it away for
+convenience. Latency/cost per session close is still a real, unquantified tradeoff — worth a
+cheap-model-only implementation (Haiku) and gating logic before shipping, not a naive "run on
+every Stop" version.
 
 **8. Automated staleness verification via a `verify_command` frontmatter field.**
 Idea: add `verify_command: git log -1 --oneline` to state-snapshot memories, and a hook runs it and

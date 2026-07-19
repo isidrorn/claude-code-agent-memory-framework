@@ -22,15 +22,21 @@ is why this lives here rather than in doodle-code-challenge's project memory.
   memory files, not just prose in a doc: `claude-code-stop-vs-sessionend.md` and
   `claude-code-hooks-bypass-permission-classifier.md`.
 
-**Immediate next step — idea #7 (agent-drafted session-end memory candidates), NOT yet started:**
-Before designing the hook itself, empirically verify the one unconfirmed claim it depends on —
-that `SessionEnd` (or `Stop`) hook input JSON actually includes a `transcript_path` pointing to
-the session's own conversation JSON on disk, giving an `agent`-type hook something real to read
-and reason over. This came from a subagent's documentation research, not a firsthand check — and
-given this session's track record (`Stop` vs `SessionEnd` cadence, `pwd` vs `pwd -W`, the
-classifier not gating hooks), verify empirically before building on it. Concretely: add a
-temporary hook (or reuse `SessionEnd`) that just dumps its raw stdin JSON to a file, trigger it,
-and inspect the actual keys present.
+**Idea #7 (agent-drafted session-end memory candidates) — blocker resolved, design specified,
+build not yet started:**
+The `transcript_path` claim is now confirmed empirically (a temporary `Stop` hook dumped its real
+stdin payload) — see [[claude-code-stop-hook-payload]] for the full key set and the file
+format it points to. `docs.claude-mem.ai` was also checked directly and confirms this is a real
+production pattern, not a speculative design (see `docs/memory-framework-ideas.md` Tier E note,
+2026-07-19). Both blockers idea #7 had are now cleared; next session can go straight to building
+the hook rather than re-verifying.
+
+Design as specified: an `agent`-type `Stop` hook, gated so it doesn't fire on every turn (e.g.
+only past N turns or on a cheap heuristic), reads `last_assistant_message` for lightweight
+per-turn signal and/or parses `transcript_path`'s `.jsonl` for full-session context, and drafts
+candidate memory entries as a `systemMessage` for the user/agent to accept or discard — not an
+auto-write, to keep the deliberate-curation property that's this framework's actual bet against
+claude-mem's fully-automatic capture.
 
 **Other open threads, lower priority:**
 - Backup destination in `memory-backup.sh` is hardcoded to this repo; a configurable destination
