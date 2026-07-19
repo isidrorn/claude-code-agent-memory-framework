@@ -207,3 +207,17 @@ claude-mem approach) would solve retrieval-at-scale better than any of the above
 corpus size the infrastructure cost isn't close to justified. The honest trigger for revisiting
 this tier isn't "the framework feels unsophisticated" — it's "the flat-file index has become
 larger than can be scanned by eye across dozens of projects." Not close to true yet.
+
+**Checked directly, 2026-07-19 (docs.claude-mem.ai fetched, not guessed):** claude-mem captures
+*every* tool call via `PostToolUse` (100+/session), sends each through the Claude Agent SDK on a
+per-user Bun/Express daemon to compress into SQLite observations, with FTS5 full-text search and
+an optional Chroma vector index for retrieval. Two takeaways:
+- It's live confirmation that idea #7's shape (a hook-triggered SDK pass over session activity,
+  drafting memory candidates) is a real production pattern, not a speculative design — this
+  directly de-risks building #7.
+- Everything else about it (automatic-everything capture, SQLite storage, a background daemon,
+  undocumented per-session SDK cost) is the opposite of this framework's bet: deliberate
+  human-curated saves, git-diffable plain markdown, zero added runtime dependencies. Adopting the
+  daemon/vector-search machinery now would be solving a retrieval-at-scale problem this repo
+  doesn't have yet (still ~10 files) at the cost of the auditability that's been load-bearing so
+  far. Decision: keep building our own; revisit only if the actual scanning-by-eye pain shows up.
