@@ -67,3 +67,59 @@ test('local-only mode commits but never pushes', () => {
   assert.ok(!remoteFiles(sbx).includes('projects/my-proj/p.md'));
   assert.ok(git(sbx.storage, ['log', '--oneline']).includes('Backup: my-proj'));
 });
+
+const SID = '11111111-2222-4333-8444-555555555555'; // session that is ending, transcript on this machine
+const OLD = '99999999-8888-4777-8666-555555555555'; // legacy ID with no transcript here
+
+function provenanceSandbox() {
+  const sbx = sandbox();
+  fs.writeFileSync(sbx.config, JSON.stringify({ storage: { path: sbx.storage }, provenance: { machine: 'test-box' } }));
+  return sbx;
+}
+
+test('session IDs never reach git: notes and commit carry machine/ref, ledger resolves locally', () => {
+  const sbx = provenanceSandbox();
+  const crlf = (s) => s.replace(/\n/g, '\r\n');
+  const cwd = withProject(sbx, {
+    'p.md': crlf(note('p', { extra: `  originSessionId: ${SID}\n` })),
+    'q.md': note('q', { extra: `  originSessionId: ${OLD}\n` }),
+  });
+  writeFiles(path.join(sbx.claudeHome, 'projects', slug(cwd)), { [`${SID}.jsonl`]: '{}\n' });
+  runHook('memory-backup.js', { cwd, session_id: SID }, sbx.env);
+
+  const show = (f) => git(sbx.base, ['--git-dir', sbx.remote, 'show', `main:${f}`]);
+  const ref = require('../lib/provenance').sessionRef(SID);
+  const p = show('projects/my-proj/p.md');
+  assert.ok(p.includes(`  origin: test-box/${ref}`), 'ID replaced in what was pushed');
+  const local = fs.readFileSync(path.join(sbx.storage, 'projects', 'my-proj', 'p.md'), 'utf8');
+  assert.ok(local.includes(`  origin: test-box/${ref}\r\n`), 'CRLF kept in the working copy');
+  assert.ok(show('projects/my-proj/q.md').includes('origin: unknown/'), 'no transcript here: not claimed by this machine');
+  assert.doesNotMatch(p + show('projects/my-proj/q.md'), /originSessionId|1111|9999/);
+  assert.ok(git(sbx.base, ['--git-dir', sbx.remote, 'log', '-1', '--format=%B', 'main']).includes(`Session: test-box/${ref}`));
+
+  const ledger = fs.readFileSync(path.join(sbx.storage, '.state', 'sessions.tsv'), 'utf8');
+  assert.ok(ledger.includes(SID) && ledger.includes(OLD) && ledger.includes(`${SID}.jsonl`));
+  assert.ok(!remoteFiles(sbx).some((f) => f.startsWith('.state')));
+
+  const commits = () => git(sbx.storage, ['rev-list', '--count', 'HEAD']);
+  const before = commits();
+  runHook('memory-backup.js', { cwd, session_id: SID }, sbx.env); // cpSync brings raw IDs back; rewrite must be identical
+  assert.strictEqual(commits(), before, 'second backup is a no-op');
+});
+
+test('a UUID in a gitignored file does not block the commit', () => {
+  const sbx = provenanceSandbox();
+  writeFiles(sbx.storage, { '.gitignore': '.state/\n.idea/\n', '.idea/workspace.xml': `<x id="${SID}"/>` });
+  const cwd = withProject(sbx, { 'p.md': note('p') });
+  runHook('memory-backup.js', { cwd }, sbx.env);
+  assert.ok(!alerts(sbx)['session-id']);
+  assert.ok(remoteFiles(sbx).includes('projects/my-proj/p.md'));
+});
+
+test('a UUID anywhere else in storage blocks the commit with an alert', () => {
+  const sbx = provenanceSandbox();
+  const cwd = withProject(sbx, { 'p.md': note('p', { body: `See session ${SID}.` }) });
+  runHook('memory-backup.js', { cwd }, sbx.env);
+  assert.ok(alerts(sbx)['session-id']);
+  assert.ok(!remoteFiles(sbx).includes('projects/my-proj/p.md'));
+});

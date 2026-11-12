@@ -7,6 +7,7 @@ const path = require('path');
 const { loadConfig, claudeHome } = require('../lib/config');
 const { open, errorLine } = require('../lib/storage');
 const { setAlert, clearAlert } = require('../lib/state');
+const { readLedger, writeLedger, record, scrubOrigins, firstUuid } = require('../lib/provenance');
 
 // Cheap pattern match, not a real secret scanner: a second layer behind the sensitive-data rule.
 const SECRET_RE = /(-----BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|(api|secret)[_-]?key\s*[:=]|password\s*[:=]|gh[pousr]_[A-Za-z0-9]{20,})/i;
@@ -64,8 +65,21 @@ function main() {
   }
   clearAlert(root, 'secret:global');
 
+  // Session IDs stay on this machine: notes and commits carry "<machine>/<ref>", .state/sessions.tsv resolves it.
+  // shortcut: "Session:" names the session that ends, which may also commit global edits from a parallel session; per-file attribution if that matters.
+  const rows = readLedger(root);
+  scrubOrigins(root, cfg, home, rows);
+  const trailer = input.session_id ? `\n\nSession: ${record(rows, cfg, home, input.session_id, { here: true })}` : '';
+  writeLedger(root, rows);
+  const uuidHit = firstUuid(root);
+  if (uuidHit) {
+    setAlert(root, 'session-id', `memory commit skipped: session-ID-like UUID in ${path.relative(root, uuidHit)}; remove it`);
+    return;
+  }
+  clearAlert(root, 'session-id');
+
   try {
-    store.persist(`Backup: ${inClaudeHome ? 'global' : project} memory (${new Date().toISOString().slice(0, 19)}Z)`);
+    store.persist(`Backup: ${inClaudeHome ? 'global' : project} memory (${new Date().toISOString().slice(0, 19)}Z)${trailer}`);
     clearAlert(root, 'backup');
   } catch (err) {
     setAlert(root, 'backup', `memory backup commit/push failed: ${errorLine(err)}`);

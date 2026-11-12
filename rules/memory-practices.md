@@ -30,6 +30,10 @@ client or employer specifics before writing.
 Cheap-check it (does the file, branch or tool still exist?) before acting on it, and update or
 archive the note in the same session if it drifted.
 
+**Session diaries.** Summaries from other tools (e.g. remember's now/today/recent) are history,
+not facts: don't cite them as current state without checking, and turn a lasting lesson into a
+memory note here instead of relying on the diary.
+
 **Compaction.** When an index passes ~15 lines or a file ~80 lines, archive, split or merge
 before adding more. Archive = `metadata.status: archived` + drop the index line, keep the file.
 Delete only notes that were wrong or fully absorbed elsewhere.

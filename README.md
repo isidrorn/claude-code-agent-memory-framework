@@ -48,6 +48,7 @@ missing keys use the defaults shown:
   "storage": { "provider": "git-markdown", "mode": "local+remote", "path": "~/.claude/memory",
                "remote": "origin", "branch": "main", "syncTimeoutMs": 5000 },
   "backup": { "projectTier": true },
+  "provenance": { "machine": "" },
   "injection": { "maxIndexLines": 50 },
   "lint": { "maxIndexLines": 20, "maxFileLines": 100, "maxIndexLineChars": 150 }
 }
@@ -61,7 +62,23 @@ Storage modes:
 Inside the storage folder:
 - Root `*.md` files are memories.
 - Other markdown goes in a subfolder, such as `docs/`.
-- `.state/` holds runtime alerts and must be gitignored.
+- `.state/` holds runtime alerts and the session ledger, and must be gitignored.
+
+## Provenance
+
+Session IDs and transcripts never leave the machine. On backup, Claude Code's `originSessionId:`
+line becomes `origin: <machine>/<ref>`, and each backup commit gets a `Session: <machine>/<ref>`
+line, so `git log --follow <note>` traces every step back to a session. `<ref>` is a hash of the
+session ID. `<machine>` is `provenance.machine` from the config (set a readable name per machine),
+or a short hostname hash if unset; it is `unknown` when the transcript isn't on this machine.
+Resolve a ref on the machine that made it:
+
+```
+grep <ref> ~/.claude/memory/.state/sessions.tsv   # session ID, host, user, transcript path
+```
+
+The ledger lives only in `.state/`; if that folder is wiped, refs can no longer be resolved. Any
+other UUID-shaped string in storage blocks the commit with an alert.
 
 ## Memory format
 

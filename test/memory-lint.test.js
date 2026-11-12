@@ -21,6 +21,13 @@ test('valid folder with tags and expires passes silently', () => {
   assert.strictEqual(lint(dir, 'a.md'), null);
 });
 
+test('block-list tags as rewritten by Claude Code pass; bad items still block', () => {
+  const ok = memoryDir({ 'MEMORY.md': index('a'), 'a.md': note('a', { extra: '  tags:\n    - plugin\n    - claude-code\n  originSessionId: x\n' }) });
+  assert.strictEqual(lint(ok, 'a.md'), null);
+  const bad = memoryDir({ 'MEMORY.md': index('a'), 'a.md': note('a', { extra: '  tags:\n    - Plugin Thing\n' }) });
+  assert.match(JSON.stringify(lint(bad, 'a.md')), /metadata\.tags/);
+});
+
 test('missing type, bad tags, bad expires, dangling wikilink and orphan all block', () => {
   const dir = memoryDir({
     'MEMORY.md': index('a'),

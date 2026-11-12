@@ -17,5 +17,19 @@ Ordered by which memory failures cost most. Each phase ships and is verified on 
 - Subfolders. Waits for ~40 notes.
 - `remote-only` storage and non-git providers.
 - Vector search.
+- Hook-run evidence: each hook writes its last run time to `.state/`, and session start warns when
+  the backup hasn't run in N days (idea from remember's `/remember:doctor`). Waits for a missed backup.
+- Hand-off note: one overwritten "where I left off" file shown at the next session start. Waits
+  until remember's `/remember` handoff proves not enough.
+- `gitleaks` scan in the backup hook when it is installed, behind the regex secret check. Waits
+  for a secret the regex misses.
+- Encrypted store (`git-remote-gcrypt`) so GitHub only sees ciphertext. Waits until the store
+  holds raw session content or client data.
+
+**Related tools:** [remember](https://github.com/Digital-Process-Tools/claude-remember)
+(installed for personal use) keeps automatic session diaries: what you did and where you stopped.
+It complements this project rather than competing with it. It stays local: `~/.remember` must
+never become a git repo, because remember then commits and pushes on its own, with no setting to
+stop it.
 
 **Branding:** "agent-memory" is a working name. Decide before publishing.
