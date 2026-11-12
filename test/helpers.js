@@ -40,7 +40,7 @@ function sandbox({ mode = 'local+remote', storageFiles = {} } = {}) {
   fs.mkdirSync(claudeHome, { recursive: true });
   git(base, ['init', '-q', '--bare', '-b', 'main', remote]);
   git(base, ['clone', '-q', remote, storage]);
-  writeFiles(storage, { '.gitignore': '.state/\n', ...storageFiles });
+  writeFiles(storage, { README: 'storage\n', ...storageFiles }); // no .gitignore: persist() must add it
   git(storage, ['add', '-A']);
   git(storage, ['commit', '-q', '-m', 'init']);
   git(storage, ['push', '-q', '-u', 'origin', 'main']);
