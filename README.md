@@ -1,107 +1,105 @@
-# claude-code-agent-memory-framework
+# agent-memory (working name)
 
-Fancy name for a series of skills and hooks to improve CC memory and knowledge management, adding
-global-storing and surgical context retrieval among agents.
+A Claude Code plugin that gives Claude a **curated, enforced, two-tier memory**.
 
-This repo is the **global** tier of a two-tier memory system for Claude Code (the Anthropic CLI
-coding agent), built up across working sessions in `doodle-code-challenge` and meant to apply to
-*any* project on this machine, not just that one.
+Claude Code already keeps notes per project. This plugin adds the parts it lacks:
 
-## What lives here vs. what lives elsewhere
+- **A global tier.** Lessons that matter in every project ("Lombok breaks on JDK 26", "you prefer
+  a short plan before bulk edits") live in one folder and load in every session, whichever repo
+  is open.
+- **Enforcement instead of hope.** A linter runs after every memory edit. It blocks malformed
+  notes, dangling links and unindexed files, so Claude has to fix them on the spot.
+- **Storage kept apart from the code.** Notes live in their own folder or repo, which can be
+  private. They are synced with git and backed up at the end of every session. A failure stays
+  visible until it is fixed.
 
-Claude Code gives every project its own memory folder automatically
-(`~/.claude/projects/<project>/memory/`), auto-loaded into that project's sessions. That's the
-**project tier** — facts tied to one repo's code, build state, or history. It is *not* covered by
-this repo; each project keeps its own.
+The bet behind it: memory should be **small, deliberate and trustworthy**. Claude proposes what
+to remember and you approve it. Everything is plain markdown you can read and diff. There is no
+database or background service.
 
-This repo is the **global tier**: facts that hold regardless of which project is open — a
-language/framework/tool quirk, an infra pattern, a personal habit or preference, a cross-repo
-sequencing rule. The test applied before anything lands here: *"would this still be useful with a
-different project open?"*
-
-The mechanism that makes the global tier actually reach every session normally lives on the
-machine directly, at `~/.claude/` — `CLAUDE.md` (the full "Memory Practices" rules), a
-`SessionStart` hook + a `PostToolUse` lint hook in `settings.json`, and the linter script +
-config they call. **This repo bundles copies of all of it**, under `bootstrap/`, so the whole
-framework — not just the accumulated knowledge — is portable to a new machine, not only a backup
-of what's been learned. See `bootstrap/SETUP.md` for install steps and the sync caveat (these are
-copies, not symlinks — they can drift from the live files if not re-copied after an edit).
-
-## Structure
+## Install
 
 ```
-MEMORY.md                                    index — one line per memory file, always injected
-<topic>.md                                   individual memory files (see schema below)
-docs/
-  memory-framework-ideas.md                  design backlog: what's built, what's next, why
-  hooks-reference.md                         technical reference: every hook's firing conditions,
-                                              scope, and actions
-bootstrap/                                   the mechanism itself, portable to a new machine
-  CLAUDE.md                                  copy of ~/.claude/CLAUDE.md
-  memory-lint.js                             copy of ~/.claude/scripts/memory-lint.js
-  memory-backup.sh                           copy of ~/.claude/scripts/memory-backup.sh
-  memory-lint.config.json                    copy of ~/.claude/memory-lint.config.json
-  settings.hooks.json                        the "hooks" fragment of ~/.claude/settings.json
-  settings.permissions.json                  optional permission rule, see SETUP.md
-  SETUP.md                                   install steps + how to keep the copies in sync
-projects/                                    per-project memory BACKUPS (see below) — not
-                                              reusable "global tier" knowledge, just a mirror
-  <project-name>/                            copy of that project's own memory/ folder
+/plugin marketplace add isidrorn/claude-code-agent-memory-framework
+/plugin install agent-memory@agent-memory
 ```
 
-## Per-project backups
+Requirements: Node.js 20+ and git on `PATH`.
 
-A `SessionEnd` hook (fires once per true session end, not per turn) copies whichever project you
-were actively working in — its own local `memory/` folder — into `projects/<project-name>/` here,
-and pushes. This is a **backup/portability mechanism for project-tier memory**, distinct from the
-global tier above: it's a mirror of what already exists locally, not curated reusable knowledge.
-Scope is the currently active project only, each time — not a sweep of every project on the
-machine. A cheap pattern-match guardrail skips the push (with a warning, not silently) if
-anything in that project's memory looks like a credential (private key headers, common API-key/
-password patterns) — a second layer behind the sensitive-data rule in `CLAUDE.md`, not a
-replacement for it.
+## Storage
 
-**⚠️ This repo is public, and per-project memory can be more specific than the global tier**
-(deadlines, submission status, eventually client/employer specifics). Backing it up here was a
-deliberate choice made with that tradeoff in mind — acceptable for now since this is a personal
-machine and nothing here has been sensitive so far, but worth periodically re-checking as more
-projects accumulate backups. **A configurable backup destination (e.g. a separate private repo)
-is planned but not yet built** — see `docs/memory-framework-ideas.md`.
+By default, global notes live in `~/.claude/memory` (mode `local+remote`):
+- Session start pulls the latest notes (fast-forward only, 5 s timeout) and pushes anything a
+  previous session failed to push.
+- Session end copies the open project's Claude Code memory into `projects/<name>/`, commits
+  everything that changed, and pushes.
 
-## Memory file schema
+For backup and multi-machine sync, make that folder a clone of a **private** repo:
 
-Each memory file (not `MEMORY.md` or `README.md`) has YAML frontmatter:
+```
+git clone https://github.com/<you>/<your-memory-repo>.git ~/.claude/memory
+```
 
-```yaml
+To change any of this, create `~/.claude/agent-memory/config.json`. Every key is optional;
+missing keys use the defaults shown:
+
+```json
+{
+  "storage": { "provider": "git-markdown", "mode": "local+remote", "path": "~/.claude/memory",
+               "remote": "origin", "branch": "main", "syncTimeoutMs": 5000 },
+  "backup": { "projectTier": true },
+  "injection": { "maxIndexLines": 50 },
+  "lint": { "maxIndexLines": 20, "maxFileLines": 100, "maxIndexLineChars": 150 }
+}
+```
+
+Storage modes:
+- `local-only`: commits locally if the folder is a git repo, and never pushes.
+- `local+remote`: the default described above.
+- `remote-only`: planned, not implemented.
+
+Inside the storage folder:
+- Root `*.md` files are memories.
+- Other markdown goes in a subfolder, such as `docs/`.
+- `.state/` holds runtime alerts and must be gitignored.
+
+## Memory format
+
+```markdown
 ---
-name: topic-first-kebab-case-slug   # must match the filename
-description: "one-line summary, used for relevance matching"
+name: lombok-jdk-version-requirement      # = filename
+description: Lombok needs JDK 21 here; newer JDKs break it silently
 metadata:
-  node_type: memory
-  type: project                      # user | feedback | project | reference
-  modified: <date>
-  status: archived                   # optional; only valid value, means "kept for history, not indexed"
+  type: reference                          # user | feedback | project | reference
+  tags: [lombok, jdk, maven]               # optional: tool/tech names
+  expires: 2027-01-01                      # optional: for time-bound facts
+  status: archived                         # optional: kept for history, removed from the index
 ---
 
-Body: the fact/rule, usually with **Why:** and **How to apply:** lines.
+The fact, then **Why:** and **How to apply:**.
 ```
 
-Note: the project-tier schema (in each repo's own local `memory/` folder) also carries an
-`originSessionId` field for local provenance. It's deliberately omitted here — this repo is
-public, and a session identifier is an unnecessary identifier to publish. See the sensitive-data
-rule in `CLAUDE.md`.
+Each folder has a `MEMORY.md` index with one line per active note. The full rules Claude follows
+are in [`rules/memory-practices.md`](rules/memory-practices.md), which is printed at every session
+start.
 
-Naming: kebab-case, topic-first (subject before modifier), one topic per file, no dates or verbs
-in the filename. Cross-file references use `[[name]]` wikilinks — but only within this same
-folder; a project-tier memory pointing at something here uses a plain-text filename reference
-instead, since cross-folder wikilink resolution is unverified.
+## What runs when
 
-## Enforcement, not just convention
+See [`docs/hooks-reference.md`](docs/hooks-reference.md).
 
-A `PostToolUse` hook lints every edit to a file in a folder literally named `memory` (this one, and
-any project's): required frontmatter fields, valid `type`/`status` values, no duplicate `name`
-slugs, no dangling `[[wikilink]]`s, no orphaned (unindexed, non-archived) files, `MEMORY.md` line
-length and count against configurable soft caps. Schema violations block with a reason fed back to
-the agent; threshold breaches surface as a warning only. See `docs/memory-framework-ideas.md` for
-why this — a hook that can reject a bad write — is a meaningfully stronger guarantee than a rule
-stated in `CLAUDE.md` that the agent is merely supposed to remember.
+| Event | Script | Does |
+|---|---|---|
+| Session start | `hooks/session-start.js` | Sync storage, then print alerts, rules, global index (capped) and expired notes |
+| After Write/Edit | `hooks/memory-lint.js` | Lint the touched memory folder; block on schema violations |
+| Session end | `hooks/memory-backup.js` | Copy project memory into storage, scan for secrets, commit, push |
+
+## Development
+
+```
+npm test
+```
+
+Tests use Node's built-in runner, with no dependencies. They run against temporary folders and a
+local bare git remote, never your real storage.
+
+Design notes and backlog: [`docs/memory-framework-ideas.md`](docs/memory-framework-ideas.md).
