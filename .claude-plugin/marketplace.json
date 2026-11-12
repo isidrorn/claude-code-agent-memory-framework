@@ -1,0 +1,11 @@
+{
+  "name": "agent-memory",
+  "owner": { "name": "isidrorn" },
+  "plugins": [
+    {
+      "name": "agent-memory",
+      "source": "./",
+      "description": "Curated, enforced two-tier memory for Claude Code with git-backed storage."
+    }
+  ]
+}

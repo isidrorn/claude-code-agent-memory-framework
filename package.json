@@ -1,0 +1,7 @@
+{
+  "name": "agent-memory",
+  "private": true,
+  "description": "Claude Code plugin: curated, enforced two-tier memory with git-backed storage",
+  "scripts": { "test": "node --test \"test/*.test.js\"" },
+  "engines": { "node": ">=20" }
+}

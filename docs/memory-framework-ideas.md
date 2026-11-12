@@ -1,5 +1,7 @@
 # Memory framework: engineering vs. prompting — ideas backlog
 
+> **Historical design log (July 2026).** Some statements below are outdated: the memory notes now live in a separate private storage repo, and the mechanism ships as a plugin. Current state: `README.md` and `docs/roadmap.md`. This file will be cut down to a plain backlog in Phase 1.
+
 Written 2026-07-19, moved here 2026-07-19 when this folder became a git repo. Companion to
 `~/.claude/CLAUDE.md` (Memory Practices) and this repo's own `MEMORY.md`. This is an ideas/backlog
 document, not a memory file — it doesn't follow the memory frontmatter schema and isn't indexed in

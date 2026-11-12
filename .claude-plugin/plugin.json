@@ -1,0 +1,47 @@
+{
+  "name": "agent-memory",
+  "version": "0.1.0",
+  "description": "Curated, enforced two-tier memory for Claude Code: a global tier shared by every project, a linter that rejects malformed notes, and git-backed storage kept separate from the plugin.",
+  "author": { "name": "isidrorn", "url": "https://github.com/isidrorn" },
+  "repository": "https://github.com/isidrorn/claude-code-agent-memory-framework",
+  "license": "MIT",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js\"",
+            "timeout": 20,
+            "statusMessage": "Loading agent memory..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memory-lint.js\"",
+            "timeout": 10,
+            "statusMessage": "Linting memory file..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memory-backup.js\"",
+            "timeout": 30,
+            "statusMessage": "Backing up agent memory..."
+          }
+        ]
+      }
+    ]
+  }
+}
