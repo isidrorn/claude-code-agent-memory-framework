@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// SessionEnd: copy the active project's built-in memory folder into <storage>/projects/<name>/,
-// then commit everything that changed in storage (global notes included) and push.
+// SessionEnd: copy the active project's Claude Code built-in memory, read-only, into
+// <storage>/projects/<name>/native/, then commit everything that changed in storage and push.
+// It never writes to Claude Code's folders (principle 6).
 // A failed push stays as a sticky alert and is retried by the next session's sync.
 const fs = require('fs');
 const path = require('path');
 const { loadConfig, claudeHome } = require('../lib/config');
 const { open, errorLine } = require('../lib/storage');
-const { setAlert, clearAlert } = require('../lib/state');
+const { setAlert, clearAlert, beat } = require('../lib/state');
+const { projectName } = require('../lib/project');
 const { readLedger, writeLedger, record, scrubOrigins, firstUuid } = require('../lib/provenance');
 
 // Cheap pattern match, not a real secret scanner: a second layer behind the sensitive-data rule.
@@ -41,9 +43,13 @@ function main() {
   const cfg = loadConfig();
   const store = open(cfg);
   const root = store.root;
+  // Never create the storage folder from a hook: session start alerts when it is missing.
+  if (!fs.existsSync(root)) return;
+  beat(root, 'memory-backup');
+  clearAlert(root, 'backup-crash');
   const home = path.resolve(claudeHome());
   const inClaudeHome = (cwd + path.sep).toLowerCase().startsWith((home + path.sep).toLowerCase());
-  const project = path.basename(cwd);
+  const project = projectName(cwd);
 
   if (cfg.backup.projectTier && !inClaudeHome) {
     const src = path.join(home, 'projects', projectSlug(cwd), 'memory');
@@ -53,14 +59,15 @@ function main() {
         setAlert(root, `secret:${project}`, `backup of ${project} memory skipped: possible secret in ${path.basename(hit)}; review it`);
       } else {
         clearAlert(root, `secret:${project}`);
-        fs.cpSync(src, path.join(root, 'projects', project), { recursive: true });
+        // Read-only copy of Claude Code's built-in memory; our local layer is projects/<name>/ itself.
+        fs.cpSync(src, path.join(root, 'projects', project, 'native'), { recursive: true });
       }
     }
   }
 
-  const globalHit = firstSecret(mdFiles(root, false));
+  const globalHit = firstSecret(mdFiles(root, true)); // global, local layers, queue and native copies
   if (globalHit) {
-    setAlert(root, 'secret:global', `memory commit skipped: possible secret in global note ${path.basename(globalHit)}; review it`);
+    setAlert(root, 'secret:global', `memory commit skipped: possible secret in ${path.relative(root, globalHit)}; review it`);
     return;
   }
   clearAlert(root, 'secret:global');
@@ -89,5 +96,10 @@ function main() {
 try {
   main();
 } catch (err) {
-  // Never block session end; storage misconfiguration is reported by session-start.
+  // Never block session end, but never fail silently either (principle 9).
+  try {
+    setAlert(loadConfig().storage.path, 'backup-crash', `memory backup crashed: ${errorLine(err)}`);
+  } catch {
+    // Config itself unreadable: session start reports that.
+  }
 }

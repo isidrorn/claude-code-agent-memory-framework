@@ -36,7 +36,8 @@ function sandbox({ mode = 'local+remote', storageFiles = {} } = {}) {
   const base = tmpDir('sbx');
   const claudeHome = path.join(base, 'claude');
   const remote = path.join(base, 'remote.git');
-  const storage = path.join(base, 'storage');
+  const storage = path.join(base, '.agent-memory'); // the linter's if-filter needs this folder name
+  const pluginData = path.join(base, 'plugin-data');
   fs.mkdirSync(claudeHome, { recursive: true });
   git(base, ['init', '-q', '--bare', '-b', 'main', remote]);
   git(base, ['clone', '-q', remote, storage]);
@@ -46,8 +47,8 @@ function sandbox({ mode = 'local+remote', storageFiles = {} } = {}) {
   git(storage, ['push', '-q', '-u', 'origin', 'main']);
   const config = path.join(base, 'config.json');
   fs.writeFileSync(config, JSON.stringify({ storage: { path: storage, mode } }));
-  const env = { ...process.env, ...GIT_ENV, CLAUDE_CONFIG_DIR: claudeHome, AGENT_MEMORY_CONFIG: config };
-  return { base, claudeHome, remote, storage, config, env };
+  const env = { ...process.env, ...GIT_ENV, CLAUDE_CONFIG_DIR: claudeHome, AGENT_MEMORY_CONFIG: config, CLAUDE_PLUGIN_DATA: pluginData };
+  return { base, claudeHome, remote, storage, pluginData, config, env };
 }
 
 function runHook(name, input, env) {
