@@ -1,6 +1,6 @@
 {
   "name": "agent-memory",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Curated, enforced two-tier memory for Claude Code: a global tier shared by every project, a linter that rejects malformed notes, and git-backed storage kept separate from the plugin.",
   "author": { "name": "isidrorn", "url": "https://github.com/isidrorn" },
   "repository": "https://github.com/isidrorn/claude-code-agent-memory-framework",
