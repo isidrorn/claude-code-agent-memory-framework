@@ -119,4 +119,5 @@ npm test
 Tests use Node's built-in runner, with no dependencies. They run against temporary folders and a
 local bare git remote, never your real storage.
 
-Design notes and backlog: [`docs/memory-framework-ideas.md`](docs/memory-framework-ideas.md).
+Design and decisions: [`docs/design.md`](docs/design.md). Order of work:
+[`docs/roadmap.md`](docs/roadmap.md). Backlog: [`docs/memory-framework-ideas.md`](docs/memory-framework-ideas.md).
