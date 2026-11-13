@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// PostToolUse linter for memory files (global storage folder or any project's memory/ folder).
+// PostToolUse linter for our memory notes (global root and projects/<name>/ local layers).
 // Reads hook JSON on stdin; if the touched file is a memory .md, validates the whole folder and
 // reports errors (schema violations -> block) or warnings (soft thresholds).
 const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../lib/config');
 const { parseFrontmatter } = require('../lib/frontmatter');
+const { beat } = require('../lib/state');
 
 // Non-memory files a memory folder may legitimately contain at its root.
 const EXEMPT_FILES = new Set(['MEMORY.md', 'README.md']);
@@ -20,12 +21,17 @@ function readStdin() {
   }
 }
 
-// Project memory folders are always named "memory"; the global folder is wherever storage points.
+// Only our own layers are linted: global notes at the storage root and local notes in
+// projects/<name>/. Never Claude Code's built-in memory, nor our read-only copies of it
+// (projects/<name>/native/), nor queue/ (principle 6).
 function isMemoryMarkdownFile(filePath, storageRoot) {
   if (!filePath || !filePath.toLowerCase().endsWith('.md')) return false;
-  const dir = path.resolve(path.dirname(filePath));
-  return path.basename(dir) === 'memory' || dir.toLowerCase() === storageRoot.toLowerCase();
+  const rel = path.relative(storageRoot.toLowerCase(), path.resolve(path.dirname(filePath)).toLowerCase());
+  return rel === '' || /^projects[\\/][^\\/]+$/.test(rel);
 }
+
+// Absolute home paths reveal a username (principle: strip them); warn, don't block.
+const HOME_PATH_RE = /([A-Za-z]:[\\/]Users[\\/]|\/Users\/|\/home\/)[^\\/\s`'")]+/;
 
 function lintFolder(dir, config) {
   const errors = [];
@@ -98,6 +104,9 @@ function lintFolder(dir, config) {
       else namesInFolder.set(fm.name, file);
     }
 
+    const home = body.match(HOME_PATH_RE);
+    if (home) warnings.push(`${file} contains an absolute home path ("${home[0]}"); write it as ~/... instead`);
+
     const lineCount = body.split(/\r?\n/).length;
     if (lineCount > config.maxFileLines) {
       warnings.push(`${file} has ${lineCount} lines (soft cap ${config.maxFileLines}) — consider splitting or trimming`);
@@ -132,6 +141,7 @@ function main() {
   const cfg = loadConfig();
   const filePath = (input.tool_input && input.tool_input.file_path) || (input.tool_response && input.tool_response.filePath);
   if (!isMemoryMarkdownFile(filePath, cfg.storage.path)) return;
+  beat(cfg.storage.path, 'memory-lint');
 
   const { errors, warnings } = lintFolder(path.dirname(filePath), cfg.lint);
   if (errors.length > 0) {

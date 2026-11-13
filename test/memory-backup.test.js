@@ -7,7 +7,7 @@ const { note, writeFiles, git, sandbox, runHook } = require('./helpers');
 const slug = (p) => p.replace(/[^A-Za-z0-9]/g, '-');
 const alerts = (sbx) => {
   try {
-    return JSON.parse(fs.readFileSync(path.join(sbx.storage, '.state', 'alerts.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(sbx.pluginData, 'alerts.json'), 'utf8'));
   } catch {
     return {};
   }
@@ -27,7 +27,7 @@ test('backs up project memory and uncommitted global notes, then pushes', () => 
   writeFiles(sbx.storage, { 'g.md': note('g') }); // a global note nobody committed
   runHook('memory-backup.js', { cwd }, sbx.env);
   const files = remoteFiles(sbx);
-  assert.ok(files.includes('projects/my-proj/p.md'), files.join(','));
+  assert.ok(files.includes('projects/my-proj/native/p.md'), files.join(','));
   assert.ok(files.includes('g.md'), 'global note committed and pushed');
   assert.ok(!files.some((f) => f.startsWith('.state')), '.state stays out of git');
   assert.deepStrictEqual(alerts(sbx), {});
@@ -37,7 +37,7 @@ test('secret in project memory skips that copy and leaves an alert', () => {
   const sbx = sandbox();
   const cwd = withProject(sbx, { 'p.md': note('p', { body: 'api_key = abc123' }) });
   runHook('memory-backup.js', { cwd }, sbx.env);
-  assert.ok(!fs.existsSync(path.join(sbx.storage, 'projects', 'my-proj')));
+  assert.ok(!fs.existsSync(path.join(sbx.storage, 'projects', 'my-proj', 'native')));
   assert.ok(alerts(sbx)['secret:my-proj']);
 });
 
@@ -55,7 +55,7 @@ test('push failure is a sticky alert; next session start pushes and clears it', 
 
   fs.renameSync(moved, sbx.remote);
   runHook('session-start.js', {}, sbx.env); // sync retries the push
-  assert.ok(remoteFiles(sbx).includes('projects/my-proj/p.md'), 'retried push landed');
+  assert.ok(remoteFiles(sbx).includes('projects/my-proj/native/p.md'), 'retried push landed');
   runHook('memory-backup.js', { cwd }, sbx.env);
   assert.ok(!alerts(sbx).backup, 'alert cleared after a successful backup');
 });
@@ -64,7 +64,7 @@ test('local-only mode commits but never pushes', () => {
   const sbx = sandbox({ mode: 'local-only' });
   const cwd = withProject(sbx, { 'p.md': note('p') });
   runHook('memory-backup.js', { cwd }, sbx.env);
-  assert.ok(!remoteFiles(sbx).includes('projects/my-proj/p.md'));
+  assert.ok(!remoteFiles(sbx).includes('projects/my-proj/native/p.md'));
   assert.ok(git(sbx.storage, ['log', '--oneline']).includes('Backup: my-proj'));
 });
 
@@ -89,12 +89,12 @@ test('session IDs never reach git: notes and commit carry machine/ref, ledger re
 
   const show = (f) => git(sbx.base, ['--git-dir', sbx.remote, 'show', `main:${f}`]);
   const ref = require('../lib/provenance').sessionRef(SID);
-  const p = show('projects/my-proj/p.md');
+  const p = show('projects/my-proj/native/p.md');
   assert.ok(p.includes(`  origin: test-box/${ref}`), 'ID replaced in what was pushed');
-  const local = fs.readFileSync(path.join(sbx.storage, 'projects', 'my-proj', 'p.md'), 'utf8');
+  const local = fs.readFileSync(path.join(sbx.storage, 'projects', 'my-proj', 'native', 'p.md'), 'utf8');
   assert.ok(local.includes(`  origin: test-box/${ref}\r\n`), 'CRLF kept in the working copy');
-  assert.ok(show('projects/my-proj/q.md').includes('origin: unknown/'), 'no transcript here: not claimed by this machine');
-  assert.doesNotMatch(p + show('projects/my-proj/q.md'), /originSessionId|1111|9999/);
+  assert.ok(show('projects/my-proj/native/q.md').includes('origin: unknown/'), 'no transcript here: not claimed by this machine');
+  assert.doesNotMatch(p + show('projects/my-proj/native/q.md'), /originSessionId|1111|9999/);
   assert.ok(git(sbx.base, ['--git-dir', sbx.remote, 'log', '-1', '--format=%B', 'main']).includes(`Session: test-box/${ref}`));
 
   const ledger = fs.readFileSync(path.join(sbx.storage, '.state', 'sessions.tsv'), 'utf8');
@@ -113,7 +113,7 @@ test('a UUID in a gitignored file does not block the commit', () => {
   const cwd = withProject(sbx, { 'p.md': note('p') });
   runHook('memory-backup.js', { cwd }, sbx.env);
   assert.ok(!alerts(sbx)['session-id']);
-  assert.ok(remoteFiles(sbx).includes('projects/my-proj/p.md'));
+  assert.ok(remoteFiles(sbx).includes('projects/my-proj/native/p.md'));
 });
 
 test('a UUID anywhere else in storage blocks the commit with an alert', () => {
@@ -121,5 +121,19 @@ test('a UUID anywhere else in storage blocks the commit with an alert', () => {
   const cwd = withProject(sbx, { 'p.md': note('p', { body: `See session ${SID}.` }) });
   runHook('memory-backup.js', { cwd }, sbx.env);
   assert.ok(alerts(sbx)['session-id']);
-  assert.ok(!remoteFiles(sbx).includes('projects/my-proj/p.md'));
+  assert.ok(!remoteFiles(sbx).includes('projects/my-proj/native/p.md'));
+});
+
+test('never writes to Claude Code built-in memory, records a heartbeat, and skips a missing storage folder', () => {
+  const sbx = sandbox();
+  const cwd = withProject(sbx, { 'p.md': note('p', { extra: `  originSessionId: ${SID}\n` }) });
+  const src = path.join(sbx.claudeHome, 'projects', slug(cwd), 'memory', 'p.md');
+  const before = fs.readFileSync(src, 'utf8');
+  runHook('memory-backup.js', { cwd, session_id: SID }, sbx.env);
+  assert.strictEqual(fs.readFileSync(src, 'utf8'), before, 'built-in note untouched (keeps its originSessionId)');
+  assert.ok(JSON.parse(fs.readFileSync(path.join(sbx.pluginData, 'heartbeat.json'), 'utf8'))['memory-backup']);
+
+  fs.rmSync(sbx.storage, { recursive: true, force: true });
+  runHook('memory-backup.js', { cwd }, sbx.env);
+  assert.ok(!fs.existsSync(sbx.storage), 'storage folder is not recreated by the hook');
 });

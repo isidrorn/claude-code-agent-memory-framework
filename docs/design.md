@@ -120,7 +120,7 @@ the target design, not yet built. How to install and configure what exists today
   relying on them.
 - **Never enforced:** anything in Claude Code's built-in memory (principle 6).
 
-## Data layout (Phase 2b)
+## Data layout
 
 | Home | Holds | Survives update | Survives uninstall |
 |---|---|---|---|
@@ -142,19 +142,19 @@ the target design, not yet built. How to install and configure what exists today
 
 - **Sync.** Session start pulls with fast-forward only, giving up after 5 seconds. Session end
   commits and pushes. A failure becomes an alert that stays until the operation succeeds.
-- **DR10. Read-only copy of built-in memory (Phase 2b).** Session end copies the project's
+- **DR10. Read-only copy of built-in memory.** Session end copies the project's
   built-in notes into `projects/<name>/native/`, so they survive a lost machine and can be
   promoted from anywhere. Nothing is ever copied back into Claude Code's folder.
 - **Provenance.** Notes and commits carry `<machine>/<ref>`. The ref → session ID, host, user and
   transcript mapping stays on the machine that made it. Transcripts and raw session IDs never
   leave the machine.
-- **DR8. Heartbeat (Phase 2b).** Every hook records its last run, and unexpected errors become
+- **DR8. Heartbeat.** Every hook records its last run, and unexpected errors become
   alerts. Session start raises an alert when the backup has not run for N days.
-- **DR11. Linter cost (Phase 2b).** Starting any process here costs 70–100 ms, so switching
-  runtime would not help. Instead, the hook's `if` filter (`Edit(//**/.agent-memory/**/*.md)`)
-  stops Claude Code from starting it for other files. A custom storage path needs its own
-  filter.
-- **DR12. Home-path warning (Phase 2b).** The linter warns, without blocking, about absolute
+- **DR11. Linter cost.** Starting any process here costs 70–100 ms, so switching
+  runtime would not help. Instead, the hook's `if` filters (`Write(//**/.agent-memory/**/*.md)`
+  and `Edit(...)`, since an Edit filter doesn't match Write calls) stop Claude Code from starting
+  it for other files. Session start alerts if storage is outside a `.agent-memory` folder.
+- **DR12. Home-path warning.** The linter warns, without blocking, about absolute
   paths that contain a username.
 
 ## Open items
@@ -165,6 +165,5 @@ the target design, not yet built. How to install and configure what exists today
 | Can a hook see your answer to the multiple-choice question? (DR7) | The approval token | Always ask on trusted writes | Phase 3, before Phase 4 |
 | How to detect an interactive session (DR3) | Skipping questions in background sessions | Env clues (`CLAUDE_JOB_DIR`, `CLAUDE_CODE_REMOTE`) | Phase 3, before Phase 4 |
 | How to tell which built-in notes are already triaged | The promotion inbox | List them all in `/review` | Phase 4 |
-| `//` anchoring and Windows paths in `if` (DR11) | Only the linter speed-up | Today's linter | Start of Phase 2b |
-| Our `config.json` vs native plugin options | Config location | Keep `config.json` | Phase 2b |
+| Our `config.json` vs native plugin options | Config location | Keep `config.json` (chosen for now: native options are deleted on uninstall) | When publishing |
 | Branding (also names `.agent-memory`) | Publishing | Working name | Before publishing |
