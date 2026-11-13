@@ -84,3 +84,13 @@ test('a backup that has not run for staleDays raises an alert; a recent one clea
   writeFiles(sbx.pluginData, { 'heartbeat.json': JSON.stringify({ firstSeen: old, 'memory-backup': new Date().toISOString() }) });
   assert.doesNotMatch(runHook('session-start.js', {}, sbx.env).stdout, /backup has not run/);
 });
+
+test('without CLAUDE_PLUGIN_DATA (hook run by hand), a missing storage folder is still not created', () => {
+  const sbx = sandbox({ mode: 'local-only' });
+  fs.rmSync(sbx.storage, { recursive: true, force: true });
+  const env = { ...sbx.env };
+  delete env.CLAUDE_PLUGIN_DATA;
+  const out = runHook('session-start.js', {}, env).stdout;
+  assert.match(out, /not found/);
+  assert.ok(!fs.existsSync(sbx.storage), 'fallback state must not create the storage folder');
+});
