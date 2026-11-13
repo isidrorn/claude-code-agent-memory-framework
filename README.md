@@ -141,5 +141,20 @@ npm test
 Tests use Node's built-in runner, with no dependencies. They run against temporary folders and a
 local bare git remote, never your real storage.
 
+```
+npm run validate   # claude plugin validate --strict: manifest and marketplace checks
+npm run evals      # claude plugin eval: does Claude save notes in the right layer?
+claude --plugin-dir .   # try the working copy without reinstalling
+```
+
+`--plugin-dir` loads this folder for one session and silently replaces the installed
+`agent-memory`, so the hooks don't run twice. Run `/reload-plugins` after editing.
+
+The evals (`evals/`) run real Claude sessions, so they cost money: about $0.10 per run, with 3
+runs per case and a second run without the plugin for comparison. Each run gets a temporary
+home, and its scaffold seeds an empty store inside that run's workspace, so your real storage is
+never touched. On Windows, `bash` must resolve to Git Bash, not the WSL stub: run from Git Bash,
+or put `C:\Program Files\Git\bin` first on `PATH`.
+
 Design and decisions: [`docs/design.md`](docs/design.md). Order of work:
 [`docs/roadmap.md`](docs/roadmap.md). Backlog: [`docs/memory-framework-ideas.md`](docs/memory-framework-ideas.md).

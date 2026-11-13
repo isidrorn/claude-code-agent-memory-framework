@@ -2,6 +2,10 @@
   "name": "agent-memory",
   "private": true,
   "description": "Claude Code plugin: curated, enforced two-tier memory with git-backed storage",
-  "scripts": { "test": "node --test \"test/*.test.js\"" },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "validate": "claude plugin validate . --strict",
+    "evals": "claude plugin eval . --scaffold --allow-tools Write Edit --no-publish"
+  },
   "engines": { "node": ">=20" }
 }

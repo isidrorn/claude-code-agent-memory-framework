@@ -1,6 +1,7 @@
 {
   "name": "agent-memory",
   "owner": { "name": "isidrorn" },
+  "description": "Single-plugin marketplace for agent-memory, a curated two-tier memory for Claude Code.",
   "plugins": [
     {
       "name": "agent-memory",
