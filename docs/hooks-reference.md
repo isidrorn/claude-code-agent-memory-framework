@@ -11,8 +11,9 @@ No hook ever writes to `CLAUDE.md` or to Claude Code's built-in memory.
 **Fires** once when a session opens, in every project.
 
 1. **Sync** (`local+remote` only):
-   - `git pull --ff-only` within `syncTimeoutMs` (default 5 s), then push any commits a previous
-     session failed to push.
+   - `git pull --ff-only` within `syncTimeoutMs` (default 5 s), then push every local commit
+     the remote lacks: ones a previous session failed to push, and ones you made by hand in the
+     storage folder. Running the hook by hand pushes too.
    - It never auto-merges. A non-fast-forward or an unreachable remote sets the `sync` alert,
      and the session continues on the local copy.
 2. **Health checks**, each a sticky alert:

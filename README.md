@@ -31,8 +31,8 @@ Requirements: Node.js 20+ and git on `PATH`.
 Your notes live in the agent-memory folder, `~/.agent-memory` by default. It sits outside
 `~/.claude` and outside the plugin's own folders, so updating, uninstalling or reinstalling the
 plugin never touches it. In the default mode, `local+remote`:
-- Session start pulls the latest notes (fast-forward only, 5 s timeout) and pushes anything a
-  previous session failed to push.
+- Session start pulls the latest notes (fast-forward only, 5 s timeout) and pushes every local
+  commit the remote lacks, including ones you made by hand in the storage folder.
 - Session end copies the open project's Claude Code built-in memory, read-only, into
   `projects/<name>/native/`, commits everything that changed, and pushes.
 
@@ -83,7 +83,8 @@ mv ~/.claude/memory ~/.agent-memory
 ```
 
 Then move each `projects/<name>/*` into `projects/<name>/native/` and commit. Those were
-backups of built-in memory, not local notes. Session start alerts until the folder is moved.
+backups of built-in memory, not local notes. Session start alerts until the folder is moved,
+and the next session start pushes your commit.
 
 ## Provenance
 
